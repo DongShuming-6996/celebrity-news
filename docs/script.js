@@ -169,15 +169,28 @@ function initTriggerButton() {
   });
 }
 
-// ====== 新闻搜索（Google News RSS，浏览器端） ======
+// ====== 新闻搜索（浏览器端，带超时保护） ======
 async function searchNews(query) {
   const articles = [];
   const encoded = encodeURIComponent(query);
 
+  async function fetchWithTimeout(url, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      return resp;
+    } catch (e) {
+      clearTimeout(timer);
+      throw e;
+    }
+  }
+
   // Google News 中文
   try {
     const url = `https://news.google.com/rss/search?q=${encoded}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
-    const resp = await fetch(url);
+    const resp = await fetchWithTimeout(url);
     const text = await resp.text();
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'application/xml');
@@ -194,7 +207,7 @@ async function searchNews(query) {
   // Google News 英文
   try {
     const url = `https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`;
-    const resp = await fetch(url);
+    const resp = await fetchWithTimeout(url);
     const text = await resp.text();
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'application/xml');
@@ -211,7 +224,7 @@ async function searchNews(query) {
   // 去重 + 按时间排序 + 取前15条
   const seen = new Set();
   let deduped = articles.filter(a => { const k = a.title.substring(0, 30); if (seen.has(k)) return false; seen.add(k); return true; });
-  const cutoff = new Date(Date.now() - 24 * 3600000);
+  const cutoff = new Date(Date.now() - 48 * 3600000);
   deduped = deduped.filter(a => a.pubDate >= cutoff);
   deduped.sort((a, b) => b.pubDate - a.pubDate);
   return deduped.slice(0, 15);
@@ -287,7 +300,12 @@ async function doGenerate() {
 
     try {
       const articles = await searchNews(celebrity);
-      updateLoadingStep('step-search', 'done');
+      if (articles.length > 0) {
+        updateLoadingStep('step-search', 'done');
+      } else {
+        updateLoadingStep('step-search', 'done');
+        loadingText.textContent = `未获取到实时新闻，AI 将基于已有知识生成「${celebrity}」的汇报...`;
+      }
       updateLoadingStep('step-generate', 'active');
       loadingText.textContent = `AI 正在生成「${celebrity}」的汇报...`;
 
