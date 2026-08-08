@@ -58,16 +58,16 @@ async function checkScheduledReports() {
     const supabase = getSupabase();
 
     const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const today = now.toISOString().split('T')[0];
     const currentDayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
 
-    console.log(`[定时检查] ${currentTime} 周${currentDayOfWeek} 日期${today}`);
+    console.log(`[定时检查] 日期${today} 周${currentDayOfWeek}`);
 
+    // 每天一次：处理所有创建日期早于今天的用户
+    // 日度用户无条件，周度用户匹配星期
     const { data: users, error } = await supabase
       .from('users')
       .select('*')
-      .eq('report_time', currentTime)
       .lt('created_at', today + 'T00:00:00Z')
       .or(`report_frequency.eq.daily,and(report_frequency.eq.weekly,report_day.eq.${currentDayOfWeek})`);
 
