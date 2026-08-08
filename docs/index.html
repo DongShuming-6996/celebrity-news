@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>名人红人每日资讯汇报</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+  <!-- ====== 开屏弹窗 ====== -->
+  <div id="splash-modal" class="modal-overlay">
+    <div class="modal-card splash-card">
+      <div class="splash-icon">📰</div>
+      <h2>欢迎使用名人红人每日资讯汇报</h2>
+      <div class="splash-text">
+        <p>选择你关注的名人红人，一键搜索最新资讯并生成 AI 智能简报。</p>
+        <p>汇报结果直接展示在页面中，同时保存到历史记录方便回顾。</p>
+        <p>系统预置了近 7 日的模拟汇报，可在历史汇报中预览体验。</p>
+      </div>
+      <button id="splash-dismiss" class="btn-primary">我知道了</button>
+    </div>
+  </div>
+
+  <!-- ====== 左侧导航栏 ====== -->
+  <nav id="side-nav" class="side-nav">
+    <a href="#main-section" class="nav-item active">📬 生成汇报</a>
+    <a href="#result-section" class="nav-item">📰 最新汇报</a>
+    <a href="#history-section" class="nav-item">📚 历史汇报</a>
+  </nav>
+
+  <!-- ====== 主界面 ====== -->
+  <div class="container">
+    <header>
+      <h1>📰 名人红人每日资讯汇报</h1>
+      <p class="subtitle">选择你关注的名人红人，一键生成智能资讯简报</p>
+    </header>
+
+    <!-- 生成汇报 -->
+    <section class="card" id="main-section">
+      <h2>📬 生成汇报</h2>
+      <p class="card-desc">选择名人红人，系统将自动搜索最新新闻并通过 AI 生成智能简报。</p>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>选择名人红人（可多选，也可输入自定义姓名，最多3位）<span class="required">*</span></label>
+          <div class="multi-select-wrapper" id="celebrity-select-wrapper">
+            <div class="multi-select-input" id="celebrity-select-trigger">
+              <span class="placeholder" id="celebrity-placeholder">点击选择或输入自定义名人红人...</span>
+              <span class="arrow">▾</span>
+            </div>
+            <div class="multi-select-dropdown" id="celebrity-dropdown">
+              <div class="dropdown-search">
+                <input type="text" id="celebrity-search" placeholder="搜索已有名人红人或输入自定义姓名后按回车...">
+              </div>
+              <div class="dropdown-list" id="celebrity-list"></div>
+              <div class="dropdown-custom" id="dropdown-custom" style="display:none;">
+                <div class="dropdown-custom-hint">按 <strong>Enter ↵</strong> 添加自定义名人红人</div>
+              </div>
+            </div>
+          </div>
+          <div class="selected-tags" id="selected-celebrities"></div>
+        </div>
+
+        <div class="form-actions form-actions-dual">
+          <button type="button" class="btn-primary btn-trigger" id="trigger-btn">🚀 生成汇报</button>
+        </div>
+      </div>
+
+      <div id="trigger-status" class="status-message"></div>
+    </section>
+
+    <!-- 加载动画 -->
+    <div id="loading-overlay" class="loading-overlay" style="display:none;">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <p id="loading-text">正在搜索新闻...</p>
+        <div class="loading-steps">
+          <div class="step" id="step-search">🔍 搜索新闻</div>
+          <div class="step" id="step-generate">🤖 AI 生成汇报</div>
+          <div class="step" id="step-save">💾 保存记录</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 最新汇报结果 -->
+    <section class="card" id="result-section" style="display:none;">
+      <h2>📋 最新汇报</h2>
+      <div id="result-content" class="report-content"></div>
+    </section>
+
+    <!-- 历史汇报 -->
+    <section class="card" id="history-section">
+      <h2>📚 历史汇报</h2>
+      <div id="history-list" class="history-list"></div>
+    </section>
+
+    <footer>
+      <p>基于公开报道整理，仅供参考 | Powered by DeepSeek</p>
+    </footer>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
