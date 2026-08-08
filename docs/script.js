@@ -10,7 +10,7 @@ function getSupabase() {
 }
 
 // ====== DeepSeek 配置（⚠️ 部署前请将下方占位符替换为你的 API Key） ======
-const DEEPSEEK_API_KEY = 'YOUR_DEEPSEEK_API_KEY_HERE';
+const DEEPSEEK_API_KEY = 'sk-5c1cd1fef1c94effa13092b3f75a7802';
 
 // ====== 名人红人列表 ======
 const CELEBRITIES = [
