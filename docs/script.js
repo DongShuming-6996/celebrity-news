@@ -1,7 +1,13 @@
-// ====== Supabase 客户端 ======
-const SUPABASE_URL = 'https://gzioblxapcnzijjhlqoa.supabase.co';
+// ====== Supabase 客户端（延迟初始化，避免 CDN 加载失败阻塞页面） ======
+const SUPABASE_URL = 'https://gzioblxapcnzijjhlqoa.getSupabase().co';
 const SUPABASE_ANON_KEY = 'sb_publishable_XUbV97b1tOL7vMclKQAyMQ_s2gxUICs';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let _supabase = null;
+function getSupabase() {
+  if (_supabase) return _supabase;
+  if (!window.supabase) throw new Error('Supabase 未加载，请刷新页面重试');
+  _supabase = window.getSupabase().createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return _supabase;
+}
 
 // ====== DeepSeek 配置（⚠️ 部署前请将下方占位符替换为你的 API Key） ======
 const DEEPSEEK_API_KEY = 'YOUR_DEEPSEEK_API_KEY_HERE';
@@ -290,7 +296,7 @@ async function doGenerate() {
       updateLoadingStep('step-save', 'active');
       loadingText.textContent = '正在保存记录...';
 
-      const { error } = await supabase.from('reports').insert({
+      const { error } = await getSupabase().from('reports').insert({
         celebrity, content, type: 'manual'
       });
 
@@ -344,7 +350,7 @@ async function loadReports() {
 // ====== 汇报详情弹窗 ======
 async function showReportDetail(id) {
   try {
-    const { data: report } = await supabase.from('reports').select('*').eq('id', id).maybeSingle();
+    const { data: report } = await getSupabase().from('reports').select('*').eq('id', id).maybeSingle();
     if (!report) { alert('汇报不存在'); return; }
 
     const date = new Date(report.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
