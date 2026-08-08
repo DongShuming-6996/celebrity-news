@@ -1,0 +1,19 @@
+{
+  "name": "celebrity-news",
+  "version": "1.0.0",
+  "description": "明星名人每日资讯汇报",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.2",
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "nodemailer": "^6.9.0",
+    "rss-parser": "^3.13.0"
+  }
+}
