@@ -2,19 +2,17 @@
 const SUPABASE_URL = 'https://gzioblxapcnzijjhlqoa.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_XUbV97b1tOL7vMclKQAyMQ_s2gxUICs';
 
-const supabaseClient = {
-  async from(table) {
+const supabaseClient = (() => {
+  function buildQuery(table, method, body) {
     return {
-      async select(columns = '*') {
-        this._select = columns;
-        this._order = null;
-        this._filters = [];
-        return this;
-      },
       _select: '*',
       _order: null,
       _filters: [],
       _single: false,
+      _table: table,
+      _method: method || 'GET',
+      _body: body,
+      select(cols) { this._select = cols; return this; },
       eq(col, val) { this._filters.push(`${col}=eq.${encodeURIComponent(val)}`); return this; },
       lt(col, val) { this._filters.push(`${col}=lt.${encodeURIComponent(val)}`); return this; },
       or(filter) { this._filters.push(`or=(${encodeURIComponent(filter)})`); return this; },
@@ -23,62 +21,47 @@ const supabaseClient = {
         return this;
       },
       maybeSingle() { this._single = true; return this._exec(); },
+      then(resolve, reject) { return this._exec().then(resolve, reject); },
       async _exec() {
-        let url = `${SUPABASE_URL}/rest/v1/${table}?select=${this._select}`;
-        this._filters.forEach(f => { url += '&' + f; });
-        if (this._order) url += '&' + this._order;
-        if (this._single) url += '&limit=1';
-        const resp = await fetch(url, {
+        let url = `${SUPABASE_URL}/rest/v1/${table}`;
+        if (this._method === 'GET') {
+          url += `?select=${this._select}`;
+          this._filters.forEach(f => { url += '&' + f; });
+          if (this._order) url += '&' + this._order;
+          if (this._single) url += '&limit=1';
+        } else {
+          this._filters.forEach(f => { url += (url.includes('?') ? '&' : '?') + f; });
+        }
+        const opts = {
+          method: this._method,
           headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-        });
+        };
+        if (this._method === 'POST' || this._method === 'PATCH') {
+          opts.headers['Content-Type'] = 'application/json';
+          opts.headers['Prefer'] = this._method === 'POST' ? 'return=representation' : undefined;
+          opts.body = JSON.stringify(this._body);
+        }
+        const resp = await fetch(url, opts);
         if (!resp.ok) throw new Error(`Supabase ${resp.status}`);
+        if (this._method === 'DELETE') return { error: null };
         const data = await resp.json();
         if (this._single) return { data: data && data.length > 0 ? data[0] : null, error: null };
         return { data, error: null };
-      },
-      async insert(rows) {
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify(Array.isArray(rows) ? rows : [rows])
-        });
-        if (!resp.ok) throw new Error(`Supabase insert ${resp.status}`);
-        const data = await resp.json();
-        return { data, error: null };
-      },
-      async delete() {
-        let url = `${SUPABASE_URL}/rest/v1/${table}?`;
-        this._filters.forEach(f => { url += '&' + f; });
-        const resp = await fetch(url, {
-          method: 'DELETE',
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-        });
-        if (!resp.ok) throw new Error(`Supabase delete ${resp.status}`);
-        return { error: null };
-      },
-      async update(data) {
-        let url = `${SUPABASE_URL}/rest/v1/${table}?`;
-        this._filters.forEach(f => { url += '&' + f; });
-        const resp = await fetch(url, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data)
-        });
-        if (!resp.ok) throw new Error(`Supabase update ${resp.status}`);
-        return { error: null };
       }
     };
   }
-};
+
+  return {
+    from(table) {
+      return {
+        select(cols) { return buildQuery(table, 'GET').select(cols); },
+        insert(rows) { return buildQuery(table, 'POST', Array.isArray(rows) ? rows : [rows]); },
+        delete() { return buildQuery(table, 'DELETE'); },
+        update(data) { return buildQuery(table, 'PATCH', data); }
+      };
+    }
+  };
+})();
 
 // ====== DeepSeek 配置（⚠️ 部署前请将下方占位符替换为你的 API Key） ======
 const DEEPSEEK_API_KEY = 'sk-5c1cd1fef1c94effa13092b3f75a7802';
