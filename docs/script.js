@@ -1,11 +1,11 @@
 // ====== Supabase 客户端（延迟初始化，避免 CDN 加载失败阻塞页面） ======
-const SUPABASE_URL = 'https://gzioblxapcnzijjhlqoa.getSupabase().co';
+const SUPABASE_URL = 'https://gzioblxapcnzijjhlqoa.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_XUbV97b1tOL7vMclKQAyMQ_s2gxUICs';
 let _supabase = null;
 function getSupabase() {
   if (_supabase) return _supabase;
   if (!window.supabase) throw new Error('Supabase 未加载，请刷新页面重试');
-  _supabase = window.getSupabase().createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return _supabase;
 }
 
