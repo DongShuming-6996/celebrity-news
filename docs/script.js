@@ -182,6 +182,15 @@ function initCelebritySelect() {
     delete searchInput.dataset.customName;
   }
 
+  function updateOnboarding() {
+    const steps = document.querySelectorAll('.on-step');
+    const hasSelection = selectedCelebrities.length > 0;
+    steps.forEach(s => s.classList.remove('done', 'active'));
+    if (!hasSelection) { steps[0].classList.add('active'); return; }
+    steps[0].classList.add('done');
+    steps[1].classList.add('active');
+  }
+
   window.updateSelectedDisplay = function() {
     if (selectedCelebrities.length === 0) {
       placeholder.textContent = '点击选择或输入自定义名人红人...';
@@ -190,6 +199,7 @@ function initCelebritySelect() {
       placeholder.textContent = `已选 ${selectedCelebrities.length} 位名人红人`;
       placeholder.style.color = '#e8e8f0';
     }
+    updateOnboarding();
     tagsContainer.innerHTML = selectedCelebrities.map(c => {
       const isCustom = !CELEBRITIES.slice(0, 30).includes(c);
       return `<span class="selected-tag ${isCustom ? 'custom' : ''}">${c}<span class="remove-tag" onclick="window._removeCelebrity('${c.replace(/'/g, "\\'")}')">&times;</span></span>`;
@@ -202,7 +212,11 @@ function initCelebritySelect() {
     renderList(document.getElementById('celebrity-search').value);
   };
 
-  trigger.addEventListener('click', (e) => { e.stopPropagation(); dropdown.classList.toggle('open'); if (dropdown.classList.contains('open')) { searchInput.focus(); renderList(searchInput.value); } });
+  const toggleBtn = document.getElementById('dropdown-toggle-btn');
+  function openDropdown() { dropdown.classList.add('open'); toggleBtn.innerHTML = '▴ 收起'; searchInput.focus(); renderList(searchInput.value); }
+  function closeDropdown() { dropdown.classList.remove('open'); toggleBtn.innerHTML = '▾ 展开'; }
+  trigger.addEventListener('click', (e) => { e.stopPropagation(); dropdown.classList.contains('open') ? closeDropdown() : openDropdown(); });
+  toggleBtn.addEventListener('click', (e) => { e.stopPropagation(); dropdown.classList.contains('open') ? closeDropdown() : openDropdown(); });
   searchInput.addEventListener('input', (e) => renderList(e.target.value));
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); const cn = searchInput.dataset.customName || searchInput.value; if (cn && cn.trim()) addCustomCelebrity(cn); }
@@ -228,7 +242,7 @@ async function searchNews(query) {
   const articles = [];
   const encoded = encodeURIComponent(query);
 
-  async function fetchWithTimeout(url, timeoutMs = 8000) {
+  async function fetchWithTimeout(url, timeoutMs = 3000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -358,49 +372,42 @@ async function doGenerate() {
   resultSection.style.display = 'none';
   loadingOverlay.style.display = 'flex';
   resetLoadingSteps();
+  // 步骤引导：步骤2完成，步骤3进行中
+  document.querySelectorAll('.on-step').forEach(s => s.classList.remove('done', 'active'));
+  const steps = document.querySelectorAll('.on-step');
+  if (steps[0]) steps[0].classList.add('done');
+  if (steps[1]) steps[1].classList.add('done');
+  if (steps[2]) steps[2].classList.add('active');
 
-  const allResults = [];
+  loadingText.textContent = selectedCelebrities.length > 1
+    ? `并行搜索并生成 ${selectedCelebrities.length} 位名人红人的汇报...`
+    : `正在为「${selectedCelebrities[0]}」生成汇报...`;
+  updateLoadingStep('step-search', 'active');
 
-  for (let i = 0; i < selectedCelebrities.length; i++) {
-    const celebrity = selectedCelebrities[i];
-    updateLoadingStep('step-search', 'active');
-    updateLoadingStep('step-generate', '');
-    updateLoadingStep('step-save', '');
-    loadingText.textContent = `正在搜索「${celebrity}」的新闻...`;
-
+  const tasks = selectedCelebrities.map(async (celebrity) => {
     try {
       const articles = await searchNews(celebrity);
-      if (articles.length > 0) {
-        updateLoadingStep('step-search', 'done');
-      } else {
-        updateLoadingStep('step-search', 'done');
-        loadingText.textContent = `未获取到实时新闻，AI 将基于已有知识生成「${celebrity}」的汇报...`;
-      }
-      updateLoadingStep('step-generate', 'active');
-      loadingText.textContent = `AI 正在生成「${celebrity}」的汇报...`;
-
       const content = await generateReport(celebrity, articles);
-      updateLoadingStep('step-generate', 'done');
-      updateLoadingStep('step-save', 'active');
-      loadingText.textContent = '正在保存记录...';
-
-      const { error } = await supabaseClient.from('reports').insert({
-        celebrity, content, type: 'manual'
-      });
-
-      if (error) { updateLoadingStep('step-save', 'error'); console.error('保存失败:', error); }
-      else { updateLoadingStep('step-save', 'done'); }
-
-      allResults.push({ celebrity, content, type: 'manual', created_at: new Date().toISOString() });
+      await supabaseClient.from('reports').insert({ celebrity, content, type: 'manual' });
+      return { celebrity, content, type: 'manual', created_at: new Date().toISOString() };
     } catch (err) {
-      updateLoadingStep('step-generate', 'error');
-      showStatus(statusEl, `❌ 「${celebrity}」生成失败：${err.message}`, 'error');
+      console.error(`「${celebrity}」生成失败:`, err.message);
+      return null;
     }
-  }
+  });
+
+  const results = await Promise.all(tasks);
+  const allResults = results.filter(Boolean);
+
+  updateLoadingStep('step-search', 'done');
+  updateLoadingStep('step-generate', 'done');
+  updateLoadingStep('step-save', 'done');
 
   loadingText.textContent = allResults.length > 0 ? '✅ 全部完成！' : '⚠️ 生成失败';
 
   if (allResults.length > 0) {
+    // 步骤引导全部完成
+    document.querySelectorAll('.on-step').forEach(s => { s.classList.remove('active'); s.classList.add('done'); });
     resultSection.style.display = 'block';
     resultContent.innerHTML = allResults.map(r => renderReport(r)).join('<hr style="margin:30px 0;border-color:var(--border)">');
     showStatus(statusEl, `✅ 已生成 ${allResults.length} 份汇报`, 'success');

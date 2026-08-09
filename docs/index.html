@@ -41,6 +41,13 @@
     <section class="card" id="main-section">
       <h2>📬 生成汇报</h2>
       <p class="card-desc">选择名人红人，系统将自动搜索最新新闻并通过 AI 生成智能简报。</p>
+      <div class="onboarding-steps" id="onboarding-steps">
+        <div class="on-step" data-step="1"><span class="on-num">1</span> 选择名人红人</div>
+        <div class="on-arrow">→</div>
+        <div class="on-step" data-step="2"><span class="on-num">2</span> 点击生成</div>
+        <div class="on-arrow">→</div>
+        <div class="on-step" data-step="3"><span class="on-num">3</span> 查看汇报</div>
+      </div>
 
       <div class="form-grid">
         <div class="form-group">
@@ -48,7 +55,7 @@
           <div class="multi-select-wrapper" id="celebrity-select-wrapper">
             <div class="multi-select-input" id="celebrity-select-trigger">
               <span class="placeholder" id="celebrity-placeholder">点击选择或输入自定义名人红人...</span>
-              <span class="arrow">▾</span>
+              <button type="button" class="dropdown-toggle-btn" id="dropdown-toggle-btn">▾ 展开</button>
             </div>
             <div class="multi-select-dropdown" id="celebrity-dropdown">
               <div class="dropdown-search">
