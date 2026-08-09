@@ -1,13 +1,84 @@
-// ====== Supabase 客户端（延迟初始化，避免 CDN 加载失败阻塞页面） ======
+// ====== 轻量 Supabase 客户端（基于 fetch，无需 CDN） ======
 const SUPABASE_URL = 'https://gzioblxapcnzijjhlqoa.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_XUbV97b1tOL7vMclKQAyMQ_s2gxUICs';
-let _supabase = null;
-function getSupabase() {
-  if (_supabase) return _supabase;
-  if (!window.supabase) throw new Error('Supabase 未加载，请刷新页面重试');
-  _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  return _supabase;
-}
+
+const supabaseClient = {
+  async from(table) {
+    return {
+      async select(columns = '*') {
+        this._select = columns;
+        this._order = null;
+        this._filters = [];
+        return this;
+      },
+      _select: '*',
+      _order: null,
+      _filters: [],
+      _single: false,
+      eq(col, val) { this._filters.push(`${col}=eq.${encodeURIComponent(val)}`); return this; },
+      lt(col, val) { this._filters.push(`${col}=lt.${encodeURIComponent(val)}`); return this; },
+      or(filter) { this._filters.push(`or=(${encodeURIComponent(filter)})`); return this; },
+      order(col, opts = {}) {
+        this._order = `order=${col}.${opts.ascending === false ? 'desc' : 'asc'}`;
+        return this;
+      },
+      maybeSingle() { this._single = true; return this._exec(); },
+      async _exec() {
+        let url = `${SUPABASE_URL}/rest/v1/${table}?select=${this._select}`;
+        this._filters.forEach(f => { url += '&' + f; });
+        if (this._order) url += '&' + this._order;
+        if (this._single) url += '&limit=1';
+        const resp = await fetch(url, {
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+        });
+        if (!resp.ok) throw new Error(`Supabase ${resp.status}`);
+        const data = await resp.json();
+        if (this._single) return { data: data && data.length > 0 ? data[0] : null, error: null };
+        return { data, error: null };
+      },
+      async insert(rows) {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(Array.isArray(rows) ? rows : [rows])
+        });
+        if (!resp.ok) throw new Error(`Supabase insert ${resp.status}`);
+        const data = await resp.json();
+        return { data, error: null };
+      },
+      async delete() {
+        let url = `${SUPABASE_URL}/rest/v1/${table}?`;
+        this._filters.forEach(f => { url += '&' + f; });
+        const resp = await fetch(url, {
+          method: 'DELETE',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+        });
+        if (!resp.ok) throw new Error(`Supabase delete ${resp.status}`);
+        return { error: null };
+      },
+      async update(data) {
+        let url = `${SUPABASE_URL}/rest/v1/${table}?`;
+        this._filters.forEach(f => { url += '&' + f; });
+        const resp = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        if (!resp.ok) throw new Error(`Supabase update ${resp.status}`);
+        return { error: null };
+      }
+    };
+  }
+};
 
 // ====== DeepSeek 配置（⚠️ 部署前请将下方占位符替换为你的 API Key） ======
 const DEEPSEEK_API_KEY = 'sk-5c1cd1fef1c94effa13092b3f75a7802';
@@ -314,7 +385,7 @@ async function doGenerate() {
       updateLoadingStep('step-save', 'active');
       loadingText.textContent = '正在保存记录...';
 
-      const { error } = await getSupabase().from('reports').insert({
+      const { error } = await supabaseClient.from('reports').insert({
         celebrity, content, type: 'manual'
       });
 
@@ -368,7 +439,7 @@ async function loadReports() {
 // ====== 汇报详情弹窗 ======
 async function showReportDetail(id) {
   try {
-    const { data: report } = await getSupabase().from('reports').select('*').eq('id', id).maybeSingle();
+    const { data: report } = await supabaseClient.from('reports').select('*').eq('id', id).maybeSingle();
     if (!report) { alert('汇报不存在'); return; }
 
     const date = new Date(report.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
