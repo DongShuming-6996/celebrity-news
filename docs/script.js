@@ -292,7 +292,10 @@ async function generateReport(celebrity, articles) {
     `[${i + 1}] 标题：${a.title}\n   摘要：${a.snippet || '无摘要'}\n   来源：${a.source}（${a.sourceType}）\n   链接：${a.link}`
   ).join('\n\n');
 
-  const prompt = `你是一位专业的娱乐新闻编辑。请根据以下关于「${celebrity}」的最新新闻资讯，生成一份"今日速览"汇报。
+  const hasArticles = articles.length > 0;
+
+  const prompt = hasArticles
+    ? `你是一位专业的娱乐新闻编辑。请根据以下关于「${celebrity}」的最新新闻资讯，生成一份"今日速览"汇报。
 
 要求：
 1. 总字数不超过 1000 字
@@ -303,7 +306,20 @@ async function generateReport(celebrity, articles) {
 6. 使用 Markdown 格式输出
 
 以下是搜索到的新闻资讯：
-${articleTexts || '暂无相关新闻'}
+${articleTexts}
+
+请生成汇报：`
+    : `你是一位专业的娱乐新闻编辑。请根据你对「${celebrity}」的了解，生成一份"今日速览"汇报。
+
+（注意：由于网络限制，实时新闻暂未获取到，请基于你的训练数据中关于该人物的基本信息、代表作品、近期动态等撰写。）
+
+要求：
+1. 总字数不超过 800 字
+2. 结构：一句话总览 → 3~5 个要点（涵盖基本信息、代表作品、近期动态、行业影响等）→ 结尾一句话总结
+3. 默认中文输出
+4. 语气客观中立，不带主观评价
+5. 文末标注"基于公开信息整理，仅供参考"
+6. 使用 Markdown 格式输出
 
 请生成汇报：`;
 
@@ -399,7 +415,7 @@ async function doGenerate() {
 async function loadReports() {
   const listEl = document.getElementById('history-list');
   try {
-    const { data: reports } = await supabase
+    const { data: reports } = await supabaseClient
       .from('reports')
       .select('*')
       .order('created_at', { ascending: false });
