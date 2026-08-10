@@ -64,7 +64,7 @@ const supabaseClient = (() => {
 })();
 
 // ====== DeepSeek 配置（⚠️ 部署前请将下方占位符替换为你的 API Key） ======
-const DEEPSEEK_API_KEY = 'YOUR_KEY_HERE';
+const DEEPSEEK_API_KEY = 'sk-45b70a0eac924f8d88f1f5aa9f482f31';
 
 // ====== 名人红人列表 ======
 const CELEBRITIES = [
