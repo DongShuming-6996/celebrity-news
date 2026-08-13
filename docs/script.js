@@ -63,9 +63,6 @@ const supabaseClient = (() => {
   };
 })();
 
-// ====== DeepSeek 配置（⚠️ 部署前请将下方占位符替换为你的 API Key） ======
-const DEEPSEEK_API_KEY = 'YOUR_KEY_HERE';
-
 // ====== 名人红人列表 ======
 const CELEBRITIES = [
   '张雅琪', '韩红', '王虹', '西村力', '邓煜',
@@ -337,24 +334,21 @@ ${articleTexts}
 
 请生成汇报：`;
 
-  const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-report`, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${DEEPSEEK_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: '你是专业的娱乐新闻编辑，擅长客观、简洁地整理新闻要点。' },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: 1500,
-      temperature: 0.7
-    })
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+    },
+    body: JSON.stringify({ prompt })
   });
 
-  if (!resp.ok) throw new Error(`DeepSeek API 错误 (${resp.status})`);
+  if (!resp.ok) throw new Error(`生成失败 (${resp.status})`);
   const data = await resp.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('DeepSeek API 返回为空');
+  if (data.error) throw new Error(data.error);
+  const content = data.content;
+  if (!content) throw new Error('DeepSeek 返回为空');
   return content;
 }
 
