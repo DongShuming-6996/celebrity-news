@@ -87,14 +87,22 @@ document.addEventListener('DOMContentLoaded', () => {
 // ====== 开屏弹窗 ======
 function initSplashModal() {
   const modal = document.getElementById('splash-modal');
-  if (sessionStorage.getItem('splash-dismissed') === 'true') {
+  const dismissBtn = document.getElementById('splash-dismiss');
+  if (!modal || !dismissBtn) return;
+
+  const hide = () => {
     modal.style.display = 'none';
-    return;
-  }
-  document.getElementById('splash-dismiss').addEventListener('click', () => {
-    modal.style.display = 'none';
-    sessionStorage.setItem('splash-dismissed', 'true');
-  });
+    try { sessionStorage.setItem('splash-dismissed', 'true'); } catch (e) {}
+  };
+
+  let dismissed = false;
+  try { dismissed = sessionStorage.getItem('splash-dismissed') === 'true'; } catch (e) {}
+
+  if (dismissed) { hide(); return; }
+
+  dismissBtn.addEventListener('click', hide);
+  // 兜底：点击遮罩空白处也能关闭
+  modal.addEventListener('click', (e) => { if (e.target === modal) hide(); });
 }
 
 // ====== 导航高亮 ======
